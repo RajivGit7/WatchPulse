@@ -37,9 +37,9 @@ const dashboardSlice = createSlice({
         const payload = action.payload;
         let newUpdates;
         if (payload.pagination?.page > 1) {
-          newUpdates = [...state.updates, ...payload.updates];
+          newUpdates = [...state.updates, ...(payload.updates || [])];
         } else {
-          newUpdates = payload.updates;
+          newUpdates = payload.updates || [];
         }
         const seen = new Set();
         state.updates = newUpdates.filter((u) => {
