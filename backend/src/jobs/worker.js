@@ -994,6 +994,8 @@ const startWorker = async () => {
     const updateCount = await Update.deleteMany({});
     const notifCount = await Notification.deleteMany({});
     console.log(`Removed ${updateCount.deletedCount} updates and ${notifCount.deletedCount} notifications.`);
+    console.log("Reset complete. Exiting without sync — next cron cycle will establish clean baselines.");
+    process.exit(0);
   }
 
   await cleanupOldData();
