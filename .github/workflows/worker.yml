@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: "*/30 * * * *"
   workflow_dispatch:
+    inputs:
+      reset:
+        description: "Wipe all updates & notifications before sync"
+        type: boolean
+        default: false
 
 jobs:
   sync:
@@ -22,7 +27,7 @@ jobs:
           cache-dependency-path: backend/package-lock.json
 
       - run: npm ci
-      - run: node src/jobs/worker.js --once
+      - run: node src/jobs/worker.js --once ${{ inputs.reset && '--reset' || '' }}
         env:
           MONGO_URI: ${{ secrets.MONGO_URI }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}

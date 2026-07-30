@@ -241,7 +241,8 @@ const createUpdateAndNotify = async (titleId, type, summary, rawData) => {
   return update;
 };
 
-const syncTitle = async (title) => {
+const syncTitle = async (title, options = {}) => {
+  const { detectChanges: shouldDetectChanges = true } = options;
   if (isRateLimited("anilist") && isRateLimited("tmdb")) return false;
 
   try {
@@ -254,7 +255,7 @@ const syncTitle = async (title) => {
 
     if (!freshData) return true;
 
-    const changes = detectChanges(title, freshData);
+    const changes = shouldDetectChanges ? detectChanges(title, freshData) : [];
 
     for (const change of changes) {
       const summary = await summarizeUpdate({
@@ -902,6 +903,8 @@ const runSync = async () => {
     });
     console.log(`Syncing ${titles.length} titles...`);
 
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
     for (const title of titles) {
       if (Date.now() - syncStart > SYNC_TIMEOUT_MS) {
         console.log("Sync timeout reached, stopping title sync early.");
@@ -911,7 +914,9 @@ const runSync = async () => {
         console.log("Both APIs rate limited, pausing title sync.");
         break;
       }
-      const shouldContinue = await syncTitle(title);
+
+      const wasRecentlySynced = title.lastSyncedAt && new Date(title.lastSyncedAt) >= twentyFourHoursAgo;
+      const shouldContinue = await syncTitle(title, { detectChanges: wasRecentlySynced });
       if (!shouldContinue) break;
       await delay(4000);
     }
@@ -982,6 +987,14 @@ const setWorkerMeta = async (key, value) => {
 const startWorker = async () => {
   await connectDB();
   console.log("Worker started.");
+
+  const reset = process.argv.includes("--reset");
+  if (reset) {
+    console.log("Reset mode: wiping all updates and notifications...");
+    const updateCount = await Update.deleteMany({});
+    const notifCount = await Notification.deleteMany({});
+    console.log(`Removed ${updateCount.deletedCount} updates and ${notifCount.deletedCount} notifications.`);
+  }
 
   await cleanupOldData();
 
