@@ -1000,6 +1000,14 @@ const startWorker = async () => {
     process.exit(0);
   }
 
+  const once = process.argv.includes("--once");
+  if (once) {
+    console.log("Once mode: running a single sync cycle.");
+    await runSync();
+    console.log("Once mode complete. Exiting.");
+    process.exit(0);
+  }
+
   const interval = config.cronSyncInterval;
   console.log(`Scheduling sync with cron: ${interval}`);
 
