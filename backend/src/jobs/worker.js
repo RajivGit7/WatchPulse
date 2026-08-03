@@ -685,8 +685,11 @@ const retryPendingClassifications = async () => {
         );
 
         const watchlistEntries = await Watchlist.find({ title: titleDoc._id });
-        if (watchlistEntries.length > 0) {
-          const notifications = watchlistEntries.map((entry) => ({
+        const eligibleEntries = watchlistEntries.filter(
+          (entry) => !entry.createdAt || entry.createdAt <= update.detectedAt
+        );
+        if (eligibleEntries.length > 0) {
+          const notifications = eligibleEntries.map((entry) => ({
             user: entry.user,
             title: titleDoc._id,
             update: update._id,

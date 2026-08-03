@@ -11,9 +11,32 @@ export const getDashboard = async (req, res, next) => {
     const watchlistEntries = await Watchlist.find({ user: req.user._id }).populate("title");
     const titleIds = watchlistEntries.map((entry) => entry.title?._id).filter(Boolean);
 
+    if (titleIds.length === 0) {
+      return res.json({
+        updates: [],
+        relatedTitles: [],
+        pagination: {
+          page,
+          limit,
+          totalCount: 0,
+          totalPages: 0,
+          hasMore: false,
+        },
+      });
+    }
+
+    const addedAtMap = new Map(
+      watchlistEntries
+        .filter((entry) => entry.title?._id)
+        .map((entry) => [entry.title._id.toString(), entry.createdAt])
+    );
+
     const activeFilter = {
-      title: { $in: titleIds },
-      $or: [{ status: "active" }, { status: { $exists: false } }],
+      $or: titleIds.map((id) => ({
+        title: id,
+        status: { $in: ["active", null] },
+        detectedAt: { $gte: addedAtMap.get(id.toString()) },
+      })),
     };
 
     const [updates, totalCount] = await Promise.all([
