@@ -32,6 +32,15 @@ const BLOCKED_KEYWORDS = [
   "ranked",
   "best of",
   "worst",
+  "crossover",
+  "tribute",
+  "multiverse",
+  "what if",
+  "parody",
+  "power level",
+  "vs ",
+  "×",
+  "x naruto",
 ];
 
 const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
@@ -39,15 +48,19 @@ const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
 const OFFICIAL_CHANNELS = [
   "crunchyroll",
   "netflix",
+  "netflix anime",
   "hbo max",
   "disney",
+  "disney plus",
   "amazon",
   "prime video",
   "funimation",
   "aniplex",
-  "MAPPA",
+  "aniplex of america",
+  "mappa",
   "ufotable",
   "wit studio",
+  "studio bones",
   "bones",
   "madhouse",
   "kyoto animation",
@@ -55,29 +68,40 @@ const OFFICIAL_CHANNELS = [
   "liden films",
   "cloverworks",
   "a-1 pictures",
-  "bandai",
+  "bandai namco",
+  "toei animation",
+  "toho animation",
+  "sunrise",
+  "pierrot",
+  "production i.g",
+  "trigger",
   "sony pictures",
   "warner bros",
-  "paramount",
-  "lionsgate",
-  "universal",
-  "20th century",
-  "marvel",
+  "warner bros. pictures",
+  "paramount pictures",
+  "lionsgate movies",
+  "universal pictures",
+  "20th century studios",
+  "marvel entertainment",
   "star wars",
   "pixar",
 ];
 
+const normalizeChannelName = (name) =>
+  (name || "").toLowerCase().replace(/\s+/g, " ").trim();
+
 export const isOfficialChannel = (channelTitle, showTitle) => {
-  const channel = (channelTitle || "").toLowerCase();
-  const show = (showTitle || "").toLowerCase();
+  const channel = normalizeChannelName(channelTitle);
+  const show = normalizeChannelName(showTitle);
 
-  if (channel.includes(show) || show.includes(channel)) return true;
+  if (!channel || !show) return false;
 
-  for (const official of OFFICIAL_CHANNELS) {
-    if (channel.includes(official.toLowerCase())) return true;
-  }
+  const stripped = channel.replace(/\bofficial( channel)?$/i, "").trim();
+  if (stripped === show) return true;
 
-  return false;
+  return OFFICIAL_CHANNELS.some(
+    (name) => normalizeChannelName(name) === channel
+  );
 };
 
 export const searchTrailers = async (query) => {

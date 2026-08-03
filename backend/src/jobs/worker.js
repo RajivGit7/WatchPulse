@@ -183,6 +183,17 @@ const createUpdateAndNotify = async (titleId, type, summary, rawData) => {
     if (duplicate) return null;
   }
 
+  if (rawData?.videoId && rawData?.channelTitle) {
+    const reuploadWindow = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const reupload = await Update.findOne({
+      type,
+      "rawData.channelTitle": rawData.channelTitle,
+      "rawData.title": rawData.title,
+      detectedAt: { $gte: reuploadWindow },
+    }).lean();
+    if (reupload) return null;
+  }
+
   const linkDuplicate = rawData?.link
     ? await Update.findOne({
         title: titleId,
