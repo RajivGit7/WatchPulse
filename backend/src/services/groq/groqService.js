@@ -2,8 +2,32 @@ const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const MODEL = "llama-3.3-70b-versatile";
 
 const COOLDOWN_MS = 60 * 60 * 1000;
+const MAX_EVENT_DATE_AGE_MS = 90 * 24 * 60 * 60 * 1000;
+const MAX_EVENT_DATE_FUTURE_MS = 10 * 365 * 24 * 60 * 60 * 1000;
 let aiAvailable = true;
 let cooldownUntil = 0;
+
+export const isUsableEventDate = (dateStr) => {
+  if (!dateStr) return false;
+  const parsed = new Date(dateStr);
+  if (isNaN(parsed.getTime())) return false;
+  const now = Date.now();
+  return (
+    parsed.getTime() >= now - MAX_EVENT_DATE_AGE_MS &&
+    parsed.getTime() <= now + MAX_EVENT_DATE_FUTURE_MS
+  );
+};
+
+export const DATE_EVENT_TYPES = [
+  "episode_released",
+  "movie_released",
+  "season_released",
+  "release_date_announced",
+  "release_date_changed",
+  "release_delayed",
+];
+
+const PUBLISHED_RELEASE_TYPES = ["episode_released", "movie_released", "season_released"];
 
 const callGroq = async (messages, maxTokens = 200) => {
   const now = Date.now();
@@ -136,6 +160,8 @@ episode_released, movie_released, season_released, season_confirmed, release_dat
 Reply with ONLY a JSON object, no markdown, no code blocks:
 {"isEvent": true/false, "eventType": "type_or_null", "eventDate": "YYYY-MM-DD_or_null", "summary": "one sentence summary or null"}
 
+eventDate must be the date of the newly announced event only: it must be recent (within the last 3 months) or in the future. NEVER use historical dates from the article's background (e.g., a show's original release year from decades ago). If the article only mentions old/past dates, set eventDate to null. Do not report episode_released, movie_released, season_released, release_date_announced, release_date_changed, or release_delayed for historical events from years ago; classify those as "news_article".
+
 If the article is a general news article about the title (review, interview, feature, etc.) but does NOT match one of the specific event types above, classify it as "news_article" with isEvent: true. Only return {"isEvent": false} if the article is completely unrelated.`,
       },
       {
@@ -159,12 +185,27 @@ If the article is a general news article about the title (review, interview, fea
       parsed.eventType &&
       ALLOWED_TYPES.includes(parsed.eventType)
     ) {
-      return {
-        isEvent: true,
-        eventType: parsed.eventType,
-        eventDate: parsed.eventDate || article.pubDate || null,
-        summary: parsed.summary || null,
-      };
+      let eventType = parsed.eventType;
+      let eventDate =
+        parsed.eventDate ||
+        (PUBLISHED_RELEASE_TYPES.includes(parsed.eventType)
+          ? article.pubDate
+          : null) ||
+        null;
+      let summary = parsed.summary || null;
+
+      if (eventDate && !isUsableEventDate(eventDate)) {
+        if (DATE_EVENT_TYPES.includes(eventType)) {
+          console.log(`Downgrading old-date event "${eventType}" (${eventDate}) to news_article.`);
+          eventType = "news_article";
+          eventDate = null;
+          summary = null;
+        } else {
+          eventDate = null;
+        }
+      }
+
+      return { isEvent: true, eventType, eventDate, summary };
     }
 
     return { isEvent: false };

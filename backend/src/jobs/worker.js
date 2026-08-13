@@ -8,7 +8,7 @@ import Notification from "../models/Notification.js";
 import mongoose from "mongoose";
 import { getAniListTitle } from "../services/anilist/anilistService.js";
 import { getTMDBTitle } from "../services/tmdb/tmdbService.js";
-import { summarizeUpdate, classifyRSSEvent, isAIAvailable } from "../services/groq/groqService.js";
+import { summarizeUpdate, classifyRSSEvent, isAIAvailable, isUsableEventDate, DATE_EVENT_TYPES } from "../services/groq/groqService.js";
 import { searchTrailers } from "../services/youtube/youtubeService.js";
 import { fetchRSSNews } from "../services/rss/rssService.js";
 import { isRateLimited, markRateLimited, delay, anilistBreaker } from "../services/rateLimit.js";
@@ -89,18 +89,15 @@ const cleanupOldData = async () => {
   }
 
   const recentUpdates = await Update.find({
-    type: { $in: ["release_date_announced", "release_date_changed", "release_delayed"] },
+    type: { $in: DATE_EVENT_TYPES },
   }).lean();
   const invalidDateIds = recentUpdates.filter(u => {
     const dates = [u.rawData?.date, u.rawData?.new, u.rawData?.eventDate].filter(Boolean);
-    return dates.some(d => {
-      const parsed = new Date(d);
-      return isNaN(parsed.getTime()) || parsed.getFullYear() < 1900;
-    });
+    return dates.length > 0 && dates.every(d => !isUsableEventDate(d));
   }).map(u => u._id);
   if (invalidDateIds.length > 0) {
     await Update.deleteMany({ _id: { $in: invalidDateIds } });
-    console.log(`Removed ${invalidDateIds.length} updates with invalid dates (pre-1900).`);
+    console.log(`Removed ${invalidDateIds.length} updates with unusable event dates (historical/garbage).`);
   }
 
   console.log("Cleanup complete.");
@@ -204,6 +201,10 @@ const createUpdateAndNotify = async (titleId, type, summary, rawData) => {
 
   const eventDate = rawData?.eventDate || rawData?.date;
   if (eventDate) {
+    if (!isUsableEventDate(eventDate)) {
+      console.log(`Skipping ${type} for title ${titleId}: historical event date ${eventDate} is unusable.`);
+      return null;
+    }
     const semanticDuplicate = await Update.findOne({
       title: titleId,
       type,
