@@ -176,14 +176,22 @@ const Dashboard = () => {
       new Date(u.rawData.date) > now
   );
 
+  const isStaleDateChange = (u) => {
+    if (u.type !== "release_date_changed") return false;
+    const oldDate = new Date(u.rawData?.old);
+    const newDate = new Date(u.rawData?.new);
+    return oldDate < now && newDate < now;
+  };
+
   const recentlyAnnounced = recentUpdates.filter(
     (u) =>
-      u.type === "season_confirmed" ||
-      u.type === "release_date_announced" ||
-      u.type === "release_date_changed" ||
-      u.type === "release_delayed" ||
-      u.type === "streaming_platform_changed" ||
-      u.type === "official_poster_released"
+      (u.type === "season_confirmed" ||
+        u.type === "release_date_announced" ||
+        u.type === "release_date_changed" ||
+        u.type === "release_delayed" ||
+        u.type === "streaming_platform_changed" ||
+        u.type === "official_poster_released") &&
+      !isStaleDateChange(u)
   );
 
   const officialTrailers = recentUpdates.filter(

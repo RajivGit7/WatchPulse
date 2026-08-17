@@ -88,7 +88,13 @@ const Notifications = () => {
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-          {items.map((notification) => (
+          {items.filter((n) => {
+            if (n.update?.type !== "release_date_changed") return true;
+            const oldDate = new Date(n.update.rawData?.old);
+            const newDate = new Date(n.update.rawData?.new);
+            const now = new Date();
+            return !(oldDate < now && newDate < now);
+          }).map((notification) => (
             <div
               key={notification._id}
               className={`card card-hover`}

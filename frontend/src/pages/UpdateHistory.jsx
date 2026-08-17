@@ -54,14 +54,22 @@ const UpdateHistory = () => {
         <h1>Update History</h1>
       </div>
 
-      {history.length === 0 ? (
-        <div className="card empty-state">
-          <h3>No update history yet</h3>
-          <p>Updates for this title will appear here</p>
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-          {history.map((update) => (
+      {(() => {
+        const now = new Date();
+        const filtered = history.filter((u) => {
+          if (u.type !== "release_date_changed") return true;
+          const oldDate = new Date(u.rawData?.old);
+          const newDate = new Date(u.rawData?.new);
+          return !(oldDate < now && newDate < now);
+        });
+        return filtered.length === 0 ? (
+          <div className="card empty-state">
+            <h3>No update history yet</h3>
+            <p>Updates for this title will appear here</p>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            {filtered.map((update) => (
             <div key={update._id} className="card card-hover">
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem", flexWrap: "wrap", gap: "0.5rem" }}>
                 <div style={{ display: "flex", gap: "0.35rem", alignItems: "center" }}>
@@ -79,8 +87,9 @@ const UpdateHistory = () => {
               <ReadMoreLink rawData={update.rawData} />
             </div>
           ))}
-        </div>
-      )}
+          </div>
+        );
+      })()}
     </div>
   );
 };
